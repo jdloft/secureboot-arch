@@ -1,0 +1,42 @@
+#!/bin/sh
+
+# Generate sb keys
+
+# setup output
+if [ -d "/etc/secureboot" ]; then
+    echo "Secure boot files already exist"
+    exit 1
+fi
+
+mkdir /etc/secureboot
+cd /etc/secureboot
+mkdir keys certs esl
+
+uuidgen --random > GUID
+NAME="Arch Linux Secure Boot"
+
+# PK
+openssl req -new -x509 -newkey rsa:4096 -subj "/CN=$NAME PK/" -keyout keys/PK.key \
+    -out certs/PK.crt -days 3650 -nodes -sha256
+openssl x509 -in certs/PK.crt -out certs/PK.cer -outform DER
+cert-to-efi-sig-list -g "$(< GUID)" certs/PK.crt esl/PK.esl
+sign-efi-sig-list -g "$(< GUID)" -k keys/PK.key -c certs/PK.crt PK esl/PK.esl esl/PK.auth
+
+# remove PK
+sign-efi-sig-list -g "$(< GUID)" -k keys/PK.key -c certs/PK.crt PK /dev/null esl/rm_PK.auth
+
+# KEK
+openssl req -new -x509 -newkey rsa:4096 -subj "/CN=$NAME KEK/" -keyout keys/KEK.key \
+    -out certs/KEK.crt -days 3650 -nodes -sha256
+openssl x509 -in certs/KEK.crt -out certs/KEK.cer -outform DER
+cert-to-efi-sig-list -g "$(< GUID)" certs/KEK.crt esl/KEK.esl
+sign-efi-sig-list -g "$(< GUID)" -k keys/PK.key -c certs/PK.crt KEK esl/KEK.esl esl/KEK.auth
+
+# DB
+openssl req -new -x509 -newkey rsa:4096 -subj "/CN=$NAME DB/" -keyout keys/DB.key \
+    -out certs/DB.crt -days 3650 -nodes -sha256
+openssl x509 -in certs/DB.crt -out certs/DB.cer -outform DER
+cert-to-efi-sig-list -g "$(< GUID)" certs/DB.crt esl/DB.esl
+sign-efi-sig-list -g "$(< GUID)" -k keys/KEK.key -c certs/KEK.crt DB esl/DB.esl esl/DB.auth
+
+chmod -R go-rwx keys/

@@ -1,0 +1,9 @@
+post_install() {
+    echo "Generating keys" && \
+        /usr/bin/sb-keygen && \
+        echo "Signing kernels" && \
+        /usr/bin/find /boot/ -maxdepth 1 -name 'vmlinuz-*' -exec /usr/bin/sbsign --key /etc/secureboot/keys/DB.key --cert /etc/secureboot/certs/DB.crt --output {} {} \; && \
+        echo "Signing systemd-boot" && \
+        /usr/bin/find /efi/EFI/BOOT/ /efi/EFI/systemd -iname "*.efi" -exec /usr/bin/sbsign --key /etc/secureboot/keys/DB.key --cert /etc/secureboot/certs/DB.crt --output {} {} \; && \
+        echo "Done! You now should be able to enroll your keys, certs, and ESLs at /etc/secureboot"
+}

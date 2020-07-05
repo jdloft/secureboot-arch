@@ -1,0 +1,10 @@
+[Trigger]
+Type = Package
+Operation = Install
+Operation = Upgrade
+Target = systemd
+
+[Action]
+Description = Signing systemd-boot with Machine Owner Key for Secure Boot
+When = PostTransaction
+Exec = /usr/bin/find /efi/EFI/BOOT/ /efi/EFI/systemd -iname "*.efi" -exec /usr/bin/sh -c 'if ! /usr/bin/sbverify --list {} 2>/dev/null | /usr/bin/grep -q "signature certificates"; then /usr/bin/sbsign --key /etc/secureboot/keys/DB.key --cert /etc/secureboot/certs/DB.crt --output {} {}; fi' ;
